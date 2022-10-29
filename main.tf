@@ -6,4 +6,6 @@ terraform {
     }
   }
 }
-
+provider "hcloud" {
+  token = var.do_token
+}

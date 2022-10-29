@@ -1,0 +1,73 @@
+- become: yes
+  become_user: root
+  hosts: all
+  name: genesis-install
+
+  tasks: 
+    - name: Add user "gen" and add it to "sudo"
+      ansible.builtin.user:
+        name: "gen"
+        state: present
+        groups: "sudo"
+
+    - name: Add SSH key to "gen"
+      ansible.posix.authorized_key:
+        user: "gen"
+        state: present
+        key: "{{ lookup('file', pub_key)}}"
+
+    - name: Wait for apt to unlock
+      become: yes
+      shell: while sudo fuser /var/lib/dpkg/lcok >/dev/null 2>&1; do sleep 5; done;
+    
+    - name: Installing jq (essentials)
+      ansible.builtin.apt:
+       name: jq
+       update_cache: yes
+       state: latest
+
+    - name: Installing build-essential(essentials)
+      ansible.builtin.apt:
+       name: build-essential
+       update_cache: yes
+       state: latest
+
+    - name: Installing golang
+      become: yes
+      shell: mkdir -p ~/tmp/ && cd ~/tmp && wget https://go.dev/dl/go{{ go_ver }}.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go{{ go_ver }}.linux-amd64.tar.gz && echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.profile && . ~/.profile
+
+
+    - name: Clone SEKAI repository
+      ansible.builtin.git:
+        repo: 'https://github.com/KiraCore/sekai'
+        dest: /home/gen/sekai
+        single_branch: yes
+        version: master
+    
+    - name: Add Docker GPG apt Key
+      ansible.builtin.apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      ansible.builtin.apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      ansible.builtin.apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    - name: Installing proto-gen
+      become: yes
+      shell: cd /home/gen/sekai && make proto-gen
+
+    - name: Changing scripts permissions
+      become: yes
+      shell: cd /home/gen/sekai/scripts/ && chmod +x *.sh
+
+    - name: Installing SEKAI
+      become: yes
+      shell: cd /home/gen/sekai && make install

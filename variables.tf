@@ -10,11 +10,11 @@ variable "server_type" {
   default = "cpx31"
 }
 
-variable "instances" {
-  default = "2"
-}
 
 variable "os_type" {
   default = "ubuntu-20.04"
 }
 
+variable "pub_key" {}
+variable "pvt_key" {}
+variable "do_token" {}
